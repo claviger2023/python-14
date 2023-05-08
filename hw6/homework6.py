@@ -31,39 +31,11 @@ all_files = {
 all_formats = []
 unknown_formats = []
 
-def sort_files(foldername):
-    # receiving list of folders and files
-    entries = os.listdir(foldername)
-    subfolders = []
-
-    # checking and creating new folders
-    img_folder = foldername + '/images'
-    doc_folder = foldername + '/documents'
-    audio_folder = foldername + '/audio'
-    video_folder = foldername + '/video'
-    archives_folder = foldername + '/archives'
-    if not os.path.exists(img_folder):
-        os.makedirs(img_folder)
-    if not os.path.exists(doc_folder):
-        os.makedirs(doc_folder)
-    if not os.path.exists(audio_folder):
-        os.makedirs(audio_folder)
-    if not os.path.exists(video_folder):
-        os.makedirs(video_folder)
-    if not os.path.exists(archives_folder):
-        os.makedirs(archives_folder)
-
-    # sorting files regarding the format
-
- #   for root, d_names, f_names in os.walk(foldername):
- #       for folder in root:
- #           if folder != 'images' and folder != 'documents' and folder != 'audio' and folder != 'video' and folder != 'archives':
- #               if (os.path.isdir(foldername)) and (not os.listdir(folder)):
- #                   shutil.rmtree(folder)    
- #       print (root, d_names, f_names)
+def moving_files(foldername2, img_folder, doc_folder, audio_folder, video_folder, archives_folder):
+    entries = os.listdir(foldername2)
 
     for file in entries:
-        filepath = foldername + '/' + file
+        filepath = foldername2 + '/' + file
 
         if os.path.isfile(filepath):
             # preparting file name and format for checking the file extention (format)
@@ -97,7 +69,6 @@ def sort_files(foldername):
                 all_files["video"].append(new_file_name)
 
             elif format.endswith(".zip") or format.endswith(".gz") or format.endswith(".tar"):
-                #shutil.move(filepath, archives_folder + '/' + new_file_name)
                 shutil.unpack_archive(filepath, archives_folder + '/' + file_name)
                 if not (format in all_formats):
                     all_formats.append(format)
@@ -107,17 +78,39 @@ def sort_files(foldername):
                 if not (format in unknown_formats):
                     unknown_formats.append(format)
 
-        # recurring ? how to do that?
-        else:
-            if file == 'images' or file == 'documents' or file == 'audio' or file == 'video' or file == 'archives':
-                continue
-    
+def sort_files(foldername):
+    # checking and creating new folders
+    system_folders = ['images', 'documents', 'audio', 'video', 'archives']
+    img_folder = foldername + '/images'
+    doc_folder = foldername + '/documents'
+    audio_folder = foldername + '/audio'
+    video_folder = foldername + '/video'
+    archives_folder = foldername + '/archives'
+    if not os.path.exists(img_folder):
+        os.makedirs(img_folder)
+    if not os.path.exists(doc_folder):
+        os.makedirs(doc_folder)
+    if not os.path.exists(audio_folder):
+        os.makedirs(audio_folder)
+    if not os.path.exists(video_folder):
+        os.makedirs(video_folder)
+    if not os.path.exists(archives_folder):
+        os.makedirs(archives_folder)
+
+    #moving files in root directory
+    moving_files(foldername, img_folder, doc_folder, audio_folder, video_folder, archives_folder)
+
+    for root, d_names, f_names in os.walk(foldername):
+        for dir in d_names:
+            full_dir = root + '/' + dir
+            if full_dir.find('archives') == -1:
+                moving_files(root+'/'+dir, img_folder, doc_folder, audio_folder, video_folder, archives_folder)
+
     # deleting empty folders
-    entries2 = os.listdir(foldername)
-    for file in entries2:
-        filepath2 = foldername + '/' + file
-        if (os.path.isdir(filepath2)) and (not os.listdir(filepath2)):
-            shutil.rmtree(filepath2)
+    for root, d_names, f_names in os.walk(foldername):
+        if not os.listdir(root) and root.find('archives') == -1:
+            shutil.rmtree(root)
+
 
 def main():
     sort_files(sys.argv[1])
