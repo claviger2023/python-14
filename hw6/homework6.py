@@ -1,4 +1,5 @@
 import os, sys, shutil
+from pathlib import Path
 
 CYRILLIC_SYMBOLS = "абвгдеёжзийклмнопрстуфхцчшщъыьэюяєіїґАБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯЄІЇҐ"
 TRANSLATION = ("a", "b", "v", "g", "d", "e", "e", "j", "z", "i", "j", "k", "l", "m", "n", "o", "p", "r", "s", "t", "u",
@@ -31,61 +32,55 @@ all_files = {
 all_formats = []
 unknown_formats = []
 
-def moving_files(foldername2, img_folder, doc_folder, audio_folder, video_folder, archives_folder):
-    entries = os.listdir(foldername2)
+def moving_files(foldername2, img_folder, doc_folder, audio_folder, video_folder):
+    folder = Path(foldername2)
 
-    for file in entries:
-        filepath = foldername2 + '/' + file
+    for el in folder.glob("**/*"):
+        ext = el.suffix.lower()
+        new_file_name2 = normalize(el.name) + ext
+        if ext == '.jpeg' or ext == '.jpg' or ext == '.png' or ext == '.svg':
+                shutil.move(el, img_folder + '/' + new_file_name2)
+                if not (ext in all_formats):
+                    all_formats.append(ext)
+                all_files["images"].append(new_file_name2 + ext)
+        elif ext == '.doc' or ext == '.docx' or ext == '.txt' or ext == '.pdf' or ext == '.xlsx' or ext == '.pptx':
+                shutil.move(el, doc_folder + '/' + new_file_name2)
+                if not (ext in all_formats):
+                    all_formats.append(ext)
+                all_files["documents"].append(new_file_name2 + ext)
+        elif ext == '.mp3' or ext == '.ogg' or ext == '.wav' or ext == '.amr' :
+                shutil.move(el, audio_folder + '/' + new_file_name2)
+                if not (ext in all_formats):
+                    all_formats.append(ext)
+                all_files["audio"].append(new_file_name2 + ext)
+        elif ext == '.avi' or ext == '.mp4' or ext == '.mov' or ext == '.mkv':
+                shutil.move(el, video_folder + '/' + new_file_name2)
+                if not (ext in all_formats):
+                    all_formats.append(ext)
+                all_files["video"].append(new_file_name2 + ext)
+        elif ext == '.zip' or ext == '.gz' or ext == '.tar':
+            continue
+        else:
+            if not (ext in unknown_formats):
+                    unknown_formats.append(ext)
 
-        if os.path.isfile(filepath):
-            # preparting file name and format for checking the file extention (format)
-            format = os.path.splitext(filepath)[-1].lower()
-            file_name = file.replace(format, '')
-            new_file_name = normalize(file_name) + format
-            
-            # sorting file and moving to the certain folder, adding the file format and name into our lists
-            if format.endswith(".jpeg") or format.endswith(".jpg") or format.endswith(".png") or format.endswith(".svg"):
-                shutil.move(filepath, img_folder + '/' + new_file_name)
-                if not (format in all_formats):
-                    all_formats.append(format)
-                all_files["images"].append(new_file_name)
+def unzip_files(foldername2, archives_folder):
+    folder = Path(foldername2)
 
-            elif format.endswith(".doc") or format.endswith(".docx") or format.endswith(".txt") or format.endswith(".pdf") or format.endswith(".xlsx") or format.endswith(".pptx"):
-                shutil.move(filepath, doc_folder + '/' + new_file_name)
-                if not (format in all_formats):
-                    all_formats.append(format)
-                all_files["documents"].append(new_file_name)
+    for el in folder.glob("**/*"):
+        ext = el.suffix.lower()
+        if ext == '.zip' or ext == '.gz' or ext == '.tar':
+            shutil.unpack_archive(el, archives_folder + '/' + el.name.rstrip(ext))
+            if not (ext in all_formats):
+                all_formats.append(ext)
+                all_files["archives"].append(el.name+ext)
 
-            elif format.endswith(".mp3") or format.endswith(".ogg") or format.endswith(".wav") or format.endswith(".amr"):
-                shutil.move(filepath, audio_folder + '/' + new_file_name)
-                if not (format in all_formats):
-                    all_formats.append(format)
-                all_files["audio"].append(new_file_name)
+def delete_empty_folders(foldername): # this unfortunately is work not 100% correct
+    for root, d_names, f_names in os.walk(foldername):
+        if not os.listdir(root) and root.find('archives') == -1:
+            shutil.rmtree(root)
 
-            elif format.endswith(".avi") or format.endswith(".mp4") or format.endswith(".mov") or format.endswith(".mkv"):
-                shutil.move(filepath, video_folder + '/' + new_file_name)
-                if not (format in all_formats):
-                    all_formats.append(format)
-                all_files["video"].append(new_file_name)
-
-            elif format.endswith(".zip") or format.endswith(".gz") or format.endswith(".tar"):
-                shutil.unpack_archive(filepath, archives_folder + '/' + file_name)
-                if not (format in all_formats):
-                    all_formats.append(format)
-                all_files["archives"].append(new_file_name)
-
-            else:
-                if not (format in unknown_formats):
-                    unknown_formats.append(format)
-
-def sort_files(foldername):
-    # checking and creating new folders
-    system_folders = ['images', 'documents', 'audio', 'video', 'archives']
-    img_folder = foldername + '/images'
-    doc_folder = foldername + '/documents'
-    audio_folder = foldername + '/audio'
-    video_folder = foldername + '/video'
-    archives_folder = foldername + '/archives'
+def create_folders(foldername, img_folder, doc_folder, audio_folder, video_folder, archives_folder):
     if not os.path.exists(img_folder):
         os.makedirs(img_folder)
     if not os.path.exists(doc_folder):
@@ -97,22 +92,22 @@ def sort_files(foldername):
     if not os.path.exists(archives_folder):
         os.makedirs(archives_folder)
 
-    #moving files in root directory
-    moving_files(foldername, img_folder, doc_folder, audio_folder, video_folder, archives_folder)
+def sort_files(foldername):
+    img_folder = foldername + '/images'
+    doc_folder = foldername + '/documents'
+    audio_folder = foldername + '/audio'
+    video_folder = foldername + '/video'
+    archives_folder = foldername + '/archives'
 
-    for root, d_names, f_names in os.walk(foldername):
-        for dir in d_names:
-            full_dir = root + '/' + dir
-            if full_dir.find('archives') == -1:
-                moving_files(root+'/'+dir, img_folder, doc_folder, audio_folder, video_folder, archives_folder)
-
-    # deleting empty folders
-    for root, d_names, f_names in os.walk(foldername):
-        if not os.listdir(root) and root.find('archives') == -1:
-            shutil.rmtree(root)
-
+    create_folders(foldername, img_folder, doc_folder, audio_folder, video_folder, archives_folder)
+    moving_files(foldername, img_folder, doc_folder, audio_folder, video_folder)
+    unzip_files(foldername, archives_folder)
+    delete_empty_folders(foldername)
 
 def main():
+    if len(sys.argv) != 2:
+        print("Please add 2 arguments!")
+        quit()
     sort_files(sys.argv[1])
     print(all_files)
     print(all_formats)
